@@ -1,0 +1,4 @@
+Controllers: Handler functions
+Driver: connection of DB instances
+Models: Student Model
+Repository: File for postgreSQL, interaction betwn database and other API
