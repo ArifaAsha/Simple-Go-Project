@@ -1,18 +1,18 @@
 package main
 
 import (
-	"database/sql"
-	"encoding/json"
-	"log"
-	"net/http"
-	"os"
+	"project/Simple-Go-Project/student/controllers"
+	"project/Simple-Go-Project/student/driver"
 	"project/Simple-Go-Project/student/models"
 
+	"database/sql"
+	"log"
+	"net/http"
+
 	//connect to DB istance for elephant sql
-	"github.com/lib/pq"
-	"github.com/subosito/gotenv"
 
 	"github.com/gorilla/mux"
+	"github.com/subosito/gotenv"
 )
 
 var students []models.Student
@@ -29,16 +29,7 @@ func logFatal(err error) {
 }
 
 func main() {
-	pgURL, err := pq.ParseURL(os.Getenv("ELEPHANTSQL_URL"))
-	logFatal(err)
-
-	db, err = sql.Open("postgres", pgURL)
-
-	logFatal(err)
-
-	err = db.Ping()
-	logFatal(err) //if ping() gives error
-
+	db = driver.ConnectDB()
 	// log.Println(pgURL)
 
 	/*
@@ -53,73 +44,17 @@ func main() {
 
 	router := mux.NewRouter()
 
-	router.HandleFunc("/students", getStudents).Methods("GET") //Method-> GET action
-	router.HandleFunc("/students/{id}", getStudent).Methods("GET")
-	router.HandleFunc("/students", addStudent).Methods("POST")
-	router.HandleFunc("/students", updateStudent).Methods("PUT")
-	router.HandleFunc("/students/{id}", removeStudent).Methods("DELETE")
+	controller := controllers.Controller{}
 
-	log.Fatal(http.ListenAndServe(":8000", router))
-}
+	router.HandleFunc("/students", controller.GetStudents(db)).Methods("GET") //Method-> GET action
+	router.HandleFunc("/students/{id}", controller.GetStudent(db)).Methods("GET")
+	router.HandleFunc("/students", controller.AddStudent(db)).Methods("GET")
+	router.HandleFunc("/students", controller.UpdateStudent(db)).Methods("PUT")
+	router.HandleFunc("/students/{id}", controller.RemoveStudent(db)).Methods("DELETE")
+	// router.HandleFunc("/students/{id}", getStudent).Methods("GET")
+	// router.HandleFunc("/students", addStudent).Methods("POST")
+	// router.HandleFunc("/students", updateStudent).Methods("PUT")
+	// router.HandleFunc("/students/{id}", removeStudent).Methods("DELETE")
 
-func getStudents(w http.ResponseWriter, r *http.Request) {
-	var student models.Student
-	students = []models.Student{}
-	rows, err := db.Query("select * from student order by id")
-	logFatal(err)
-
-	defer rows.Close()
-
-	for rows.Next() { //map
-		err := rows.Scan(&student.ID, &student.Name, &student.Department, &student.DOB)
-		logFatal(err) //if error
-
-		students = append(students, student)
-	}
-
-	json.NewEncoder(w).Encode(students)
-
-}
-
-func getStudent(w http.ResponseWriter, r *http.Request) {
-	var student models.Student
-	params := mux.Vars(r)
-
-	rows := db.QueryRow("select * from student where id=$1", params["id"]) //$1 => placeholder id inside params
-	err := rows.Scan(&student.ID, &student.Name, &student.Department, &student.DOB)
-	logFatal(err)
-
-	json.NewEncoder(w).Encode(student)
-}
-
-func addStudent(w http.ResponseWriter, r *http.Request) {
-	var student models.Student
-	var studentID int
-
-	//Decode -> values inside the request body are mapped to the fields of student object
-	json.NewDecoder(r.Body).Decode(&student)
-	err := db.QueryRow("insert into student (name, department, dob) values($1, $2, $3) RETURNING id;",
-		student.Name, student.Department, student.DOB).Scan(&studentID) //$-> placeholders
-	logFatal(err)
-	json.NewEncoder(w).Encode(studentID)
-}
-
-func updateStudent(w http.ResponseWriter, r *http.Request) {
-	var student models.Student
-	json.NewDecoder(r.Body).Decode(&student) //decode request body and mapping
-
-	result, err := db.Exec("update student set name=$1, department=$2, dob=$3 where id=$4 RETURNING id", &student.Name, &student.Department, &student.DOB, &student.ID)
-	rowsUpdated, err := result.RowsAffected()
-	logFatal(err)
-
-	json.NewEncoder(w).Encode(rowsUpdated)
-}
-
-func removeStudent(w http.ResponseWriter, r *http.Request) {
-	params := mux.Vars(r)                                                     //returns key value pairs-> id passed in the url
-	result, err := db.Exec("delete from student where id = $1", params["id"]) //$1 -> placeholder and the value of placeholder is params["id"]
-	logFatal(err)
-
-	roewsDeleted, err := result.RowsAffected()
-	json.NewEncoder(w).Encode(roewsDeleted)
+	log.Fatal(http.ListenAndServe(":8080", router))
 }
