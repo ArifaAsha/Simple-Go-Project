@@ -6,14 +6,13 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"project/Simple-Go-Project/student/models"
 
 	//connect to DB istance for elephant sql
 	"github.com/lib/pq"
 	"github.com/subosito/gotenv"
 
 	"github.com/gorilla/mux"
-
-	"Go/Go/Learning-Go-Lang/project-student/models"
 )
 
 var students []models.Student
@@ -64,8 +63,8 @@ func main() {
 }
 
 func getStudents(w http.ResponseWriter, r *http.Request) {
-	var student Student
-	students = []Student{}
+	var student models.Student
+	students = []models.Student{}
 	rows, err := db.Query("select * from student order by id")
 	logFatal(err)
 
@@ -83,7 +82,7 @@ func getStudents(w http.ResponseWriter, r *http.Request) {
 }
 
 func getStudent(w http.ResponseWriter, r *http.Request) {
-	var student Student
+	var student models.Student
 	params := mux.Vars(r)
 
 	rows := db.QueryRow("select * from student where id=$1", params["id"]) //$1 => placeholder id inside params
@@ -94,7 +93,7 @@ func getStudent(w http.ResponseWriter, r *http.Request) {
 }
 
 func addStudent(w http.ResponseWriter, r *http.Request) {
-	var student Student
+	var student models.Student
 	var studentID int
 
 	//Decode -> values inside the request body are mapped to the fields of student object
@@ -106,7 +105,7 @@ func addStudent(w http.ResponseWriter, r *http.Request) {
 }
 
 func updateStudent(w http.ResponseWriter, r *http.Request) {
-	var student Student
+	var student models.Student
 	json.NewDecoder(r.Body).Decode(&student) //decode request body and mapping
 
 	result, err := db.Exec("update student set name=$1, department=$2, dob=$3 where id=$4 RETURNING id", &student.Name, &student.Department, &student.DOB, &student.ID)
